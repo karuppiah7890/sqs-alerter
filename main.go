@@ -55,8 +55,6 @@ func main() {
 		log.Fatalf("error occurred while parsing approximate number of messages count (%s) into integer: %v", approxNumberOfMessagesStr, err)
 	}
 
-	slackAlertSent := false
-
 	// check existing state and current state.
 	// if there's a change in state, go ahead or else stop
 	if oldState.SendAlert(approxNumberOfMessages) {
@@ -67,13 +65,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("error occurred while sending slack alert message: %v", err)
 		}
-
-		slackAlertSent = true
 	}
 
 	// store current state
 	newState := state.State{
-		SlackAlertSent:    slackAlertSent,
 		QueueMessageCount: approxNumberOfMessages,
 	}
 

@@ -9,8 +9,7 @@ import (
 )
 
 type State struct {
-	SlackAlertSent    bool `yaml:"slackAlertSent"`
-	QueueMessageCount int  `yaml:"queueMessageCount"`
+	QueueMessageCount int `yaml:"queueMessageCount"`
 }
 
 func New(stateFilePath string) (*State, error) {
@@ -29,15 +28,7 @@ func New(stateFilePath string) (*State, error) {
 }
 
 func (old *State) SendAlert(newQueueMessageCount int) bool {
-	if !old.SlackAlertSent {
-		return true
-	}
-
-	if newQueueMessageCount != old.QueueMessageCount {
-		return true
-	}
-
-	return false
+	return newQueueMessageCount != old.QueueMessageCount
 }
 
 func (s *State) StoreToFile(stateFilePath string) error {
