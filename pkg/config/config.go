@@ -12,6 +12,7 @@ import (
 
 const STATE_FILE_PATH_ENV_VAR = "STATE_FILE_PATH"
 const DEFAULT_STATE_FILE_PATH = "sqs-alerter-state.yaml"
+const AWS_REGION_ENV_VAR = "AWS_REGION"
 const AWS_ACCESS_KEY_ID_ENV_VAR = "AWS_ACCESS_KEY_ID"
 const AWS_SECRET_ACCESS_KEY_ENV_VAR = "AWS_SECRET_ACCESS_KEY"
 const SQS_QUEUE_NAME_ENV_VAR = "SQS_QUEUE_NAME"
@@ -23,6 +24,7 @@ const SLACK_TOKEN_ENV_VAR = "SLACK_TOKEN"
 const SLACK_CHANNEL_ENV_VAR = "SLACK_CHANNEL"
 
 type Config struct {
+	awsRegion          string
 	awsAccessKeyId     string
 	awsSecretAccessKey string
 	sqsQueueUrl        string
@@ -37,6 +39,11 @@ func NewConfigFromEnvVars() (*Config, error) {
 	stateFilePath, err := getStateFilePath()
 	if err != nil {
 		return nil, fmt.Errorf("error occurred while getting state file path: %v", err)
+	}
+
+	awsRegion, err := getAwsRegion()
+	if err != nil {
+		return nil, fmt.Errorf("error occurred while getting AWS Region: %v", err)
 	}
 
 	awsAccessKeyId, err := getAwsAccessKeyId()
@@ -70,6 +77,7 @@ func NewConfigFromEnvVars() (*Config, error) {
 
 	return &Config{
 		stateFilePath:      stateFilePath,
+		awsRegion:          awsRegion,
 		awsAccessKeyId:     awsAccessKeyId,
 		awsSecretAccessKey: awsSecretAccessKey,
 		sqsQueueName:       sqsQueueName,
@@ -124,6 +132,16 @@ func getSqsQueueUrl() (string, error) {
 	}
 
 	return sqsQueueUrl, nil
+}
+
+// Get AWS Region
+func getAwsRegion() (string, error) {
+	awsRegion, ok := os.LookupEnv(AWS_REGION_ENV_VAR)
+	if !ok {
+		return "", fmt.Errorf("%s environment variable value is a required value. Please define it", AWS_ACCESS_KEY_ID_ENV_VAR)
+	}
+
+	return awsRegion, nil
 }
 
 // Get AWS Access Key ID
