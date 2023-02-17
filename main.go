@@ -53,22 +53,25 @@ func main() {
 		log.Fatalf("error occurred while parsing approximate number of messages count (%s) into integer: %v", approxNumberOfMessagesStr, err)
 	}
 
+	slackAlertSent := false
+
 	// check existing state and current state.
 	// if there's a change in state, go ahead or else stop
-	if !oldState.SendAlert(approxNumberOfMessages) {
-		return
+	if oldState.SendAlert(approxNumberOfMessages) {
+		// send alerts
+		message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", approxNumberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
+		// TODO: Use Mocks to test the integration with ease for different cases with unit tests
+		err = slack.SendMessage(c.GetSlackToken(), c.GetSlackChanel(), message)
+		if err != nil {
+			log.Fatalf("error occurred while sending slack alert message: %v", err)
+		}
+
+		slackAlertSent = true
 	}
 
-	// send alerts
-	message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", approxNumberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
-	// TODO: Use Mocks to test the integration with ease for different cases with unit tests
-	err = slack.SendMessage(c.GetSlackToken(), c.GetSlackChanel(), message)
-	if err != nil {
-		log.Fatalf("error occurred while sending slack alert message: %v", err)
-	}
 	// store current state
 	newState := state.State{
-		SlackAlertSent:    true,
+		SlackAlertSent:    slackAlertSent,
 		QueueMessageCount: approxNumberOfMessages,
 	}
 
@@ -76,5 +79,4 @@ func main() {
 	if err != nil {
 		log.Fatalf("error occurred while storing new state to state file at %s: %v", c.GetStateFilePath(), err)
 	}
-
 }

@@ -33,7 +33,7 @@ func (old *State) SendAlert(newQueueMessageCount int) bool {
 		return true
 	}
 
-	if newQueueMessageCount > old.QueueMessageCount {
+	if newQueueMessageCount != old.QueueMessageCount {
 		return true
 	}
 
