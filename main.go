@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
+// TODO: Write tests for all of this
+
 func main() {
 	c, err := config.NewConfigFromEnvVars()
 	if err != nil {

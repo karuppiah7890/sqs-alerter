@@ -9,8 +9,8 @@ import (
 )
 
 type State struct {
-	SlackAlertSent    bool
-	QueueMessageCount int
+	SlackAlertSent    bool `yaml:"slackAlertSent"`
+	QueueMessageCount int  `yaml:"queueMessageCount"`
 }
 
 func New(stateFilePath string) (*State, error) {
