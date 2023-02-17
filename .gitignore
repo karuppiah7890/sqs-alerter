@@ -1,0 +1,9 @@
+sqs-alerter
+
+*.env*
+
+!.env.sample
+
+*.rdb
+
+*.tar.gz
