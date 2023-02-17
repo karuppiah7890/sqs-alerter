@@ -1,13 +1,17 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 )
 
 // All configuration is through environment variables
 
+const STATE_FILE_PATH_ENV_VAR = "STATE_FILE_PATH"
+const DEFAULT_STATE_FILE_PATH = "sqs-alerter-state.yaml"
 const AWS_ACCESS_KEY_ID_ENV_VAR = "AWS_ACCESS_KEY_ID"
 const AWS_SECRET_ACCESS_KEY_ENV_VAR = "AWS_SECRET_ACCESS_KEY"
 const SQS_QUEUE_NAME_ENV_VAR = "SQS_QUEUE_NAME"
@@ -26,9 +30,15 @@ type Config struct {
 	environmentName    string
 	slackToken         string
 	slackChannel       string
+	stateFilePath      string
 }
 
 func NewConfigFromEnvVars() (*Config, error) {
+	stateFilePath, err := getStateFilePath()
+	if err != nil {
+		return nil, fmt.Errorf("error occurred while getting state file path: %v", err)
+	}
+
 	awsAccessKeyId, err := getAwsAccessKeyId()
 	if err != nil {
 		return nil, fmt.Errorf("error occurred while getting AWS Access Key ID: %v", err)
@@ -59,6 +69,7 @@ func NewConfigFromEnvVars() (*Config, error) {
 	}
 
 	return &Config{
+		stateFilePath:      stateFilePath,
 		awsAccessKeyId:     awsAccessKeyId,
 		awsSecretAccessKey: awsSecretAccessKey,
 		sqsQueueName:       sqsQueueName,
@@ -67,6 +78,26 @@ func NewConfigFromEnvVars() (*Config, error) {
 		slackToken:         slackToken,
 		slackChannel:       slackChannel,
 	}, nil
+}
+
+// Get state file path
+func getStateFilePath() (string, error) {
+	stateFilePath, ok := os.LookupEnv(STATE_FILE_PATH_ENV_VAR)
+	if !ok {
+		stateFilePath = DEFAULT_STATE_FILE_PATH
+	}
+
+	_, err := os.Stat(stateFilePath)
+
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", fmt.Errorf("state file does not exist at path %s", stateFilePath)
+		}
+
+		return "", fmt.Errorf("could not find file info of the state file at path %s: %v", stateFilePath, err)
+	}
+
+	return stateFilePath, nil
 }
 
 // Get optional name for the SQS Queue. Default is "SQS Queue".
@@ -141,6 +172,10 @@ func getSlackChannel() (string, error) {
 		return "", fmt.Errorf("%s environment variable is not defined and is required. Please define it", SLACK_CHANNEL_ENV_VAR)
 	}
 	return slackChannel, nil
+}
+
+func (c *Config) GetStateFilePath() string {
+	return c.stateFilePath
 }
 
 func (c *Config) GetSqsQueueName() string {

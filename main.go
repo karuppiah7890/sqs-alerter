@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/karuppiah7890/sqs-alerter/pkg/config"
+	"github.com/karuppiah7890/sqs-alerter/pkg/slack"
+	"github.com/karuppiah7890/sqs-alerter/pkg/state"
 
 	awsconf "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -18,9 +21,10 @@ func main() {
 		log.Fatalf("error occurred while getting configuration from environment variables: %v", err)
 	}
 
-	_ = c
-
-	// login to AWS
+	oldState, err := state.New(c.GetStateFilePath())
+	if err != nil {
+		log.Fatalf("error occurred while initializing state from state file at %s: %v", c.GetStateFilePath(), err)
+	}
 
 	awsconfig, err := awsconf.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -37,26 +41,40 @@ func main() {
 		},
 	}
 
+	// get ApproximateNumberOfMessages attribute using get queue attributes for SQS queue
 	output, err := sqsClient.GetQueueAttributes(context.TODO(), &input)
 	if err != nil {
 		log.Fatalf("error occurred while getting sqs queue attributes: %v", err)
 	}
 
-	fmt.Printf("%+v", output.Attributes)
+	approxNumberOfMessagesStr := output.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessages)]
+	approxNumberOfMessages, err := strconv.Atoi(approxNumberOfMessagesStr)
+	if err != nil {
+		log.Fatalf("error occurred while parsing approximate number of messages count (%s) into integer: %v", approxNumberOfMessagesStr, err)
+	}
 
-	// get ApproximateNumberOfMessages attribute using get queue attributes
-
-	// check existing state and current state
+	// check existing state and current state.
 	// if there's a change in state, go ahead or else stop
+	if !oldState.SendAlert(approxNumberOfMessages) {
+		return
+	}
 
-	// store current state
 	// send alerts
+	message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", approxNumberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
+	// TODO: Use Mocks to test the integration with ease for different cases with unit tests
+	err = slack.SendMessage(c.GetSlackToken(), c.GetSlackChanel(), message)
+	if err != nil {
+		log.Fatalf("error occurred while sending slack alert message: %v", err)
+	}
+	// store current state
+	newState := state.State{
+		SlackAlertSent:    true,
+		QueueMessageCount: approxNumberOfMessages,
+	}
 
-	// message := fmt.Sprintf("Warning alert :warning:! %s messages are present in %s in %s environment :warning:", c.GetSqsQueueName(), c.GetEnvironmentName())
-	// // TODO: Use Mocks to test the integration with ease for different cases with unit tests
-	// err = slack.SendMessage(c.GetSlackToken(), c.GetSlackChanel(), message)
-	// if err != nil {
-	// 	log.Fatalf("error occurred while sending slack alert message: %v", err)
-	// }
+	err = newState.StoreToFile(c.GetStateFilePath())
+	if err != nil {
+		log.Fatalf("error occurred while storing new state to state file at %s: %v", c.GetStateFilePath(), err)
+	}
 
 }

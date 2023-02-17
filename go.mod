@@ -18,4 +18,5 @@ require (
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/slack-go/slack v0.12.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

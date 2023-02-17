@@ -7,3 +7,5 @@ sqs-alerter
 *.rdb
 
 *.tar.gz
+
+sqs-alerter-state.yaml
