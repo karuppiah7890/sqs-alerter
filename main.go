@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// check existing state and current state.
-	// if there's a change in state, go ahead or else stop
+	// if there's a change in state, go ahead and send alert
 	if oldState.SendAlert(approxNumberOfMessages) {
 		// send alerts
 		message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", approxNumberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
