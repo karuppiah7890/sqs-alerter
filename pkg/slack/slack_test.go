@@ -18,7 +18,7 @@ func TestSendMessage(t *testing.T) {
 
 	testMessage := fmt.Sprintf("This is a test message. Time: %v", time.Now())
 
-	err = slack.SendMessage(c.GetSlackToken(), "test", testMessage)
+	_, err = slack.SendMessage(c.GetSlackToken(), "test", testMessage)
 	if err != nil {
 		t.Fatalf("error occurred while sending slack message: %v", err)
 	}

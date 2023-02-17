@@ -9,7 +9,8 @@ import (
 )
 
 type State struct {
-	QueueMessageCount int `yaml:"queueMessageCount"`
+	QueueMessageCount   int `yaml:"queueMessageCount"`
+	LastThreadTimestamp string
 }
 
 func New(stateFilePath string) (*State, error) {

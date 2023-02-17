@@ -6,10 +6,13 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"time"
 )
 
 // All configuration is through environment variables
 
+const NEW_THREAD_MIN_INTERVAL_ENV_VAR = "NEW_THREAD_MIN_INTERVAL"
+const DEFAULT_NEW_THREAD_MIN_INTERVAL = "1h"
 const STATE_FILE_PATH_ENV_VAR = "STATE_FILE_PATH"
 const DEFAULT_STATE_FILE_PATH = "sqs-alerter-state.yaml"
 const AWS_REGION_ENV_VAR = "AWS_REGION"
@@ -24,15 +27,16 @@ const SLACK_TOKEN_ENV_VAR = "SLACK_TOKEN"
 const SLACK_CHANNEL_ENV_VAR = "SLACK_CHANNEL"
 
 type Config struct {
-	awsRegion          string
-	awsAccessKeyId     string
-	awsSecretAccessKey string
-	sqsQueueUrl        string
-	sqsQueueName       string
-	environmentName    string
-	slackToken         string
-	slackChannel       string
-	stateFilePath      string
+	awsRegion            string
+	awsAccessKeyId       string
+	awsSecretAccessKey   string
+	sqsQueueUrl          string
+	sqsQueueName         string
+	environmentName      string
+	slackToken           string
+	slackChannel         string
+	stateFilePath        string
+	newThreadMinInterval time.Duration
 }
 
 func NewConfigFromEnvVars() (*Config, error) {
@@ -75,17 +79,37 @@ func NewConfigFromEnvVars() (*Config, error) {
 		return nil, fmt.Errorf("error occurred while getting slack channel: %v", err)
 	}
 
+	newThreadMinInterval, err := getNewThreadMinInterval()
+	if err != nil {
+		return nil, fmt.Errorf("error occurred while getting new thread minimum interval: %v", err)
+	}
+
 	return &Config{
-		stateFilePath:      stateFilePath,
-		awsRegion:          awsRegion,
-		awsAccessKeyId:     awsAccessKeyId,
-		awsSecretAccessKey: awsSecretAccessKey,
-		sqsQueueName:       sqsQueueName,
-		sqsQueueUrl:        sqsQueueUrl,
-		environmentName:    environmentName,
-		slackToken:         slackToken,
-		slackChannel:       slackChannel,
+		stateFilePath:        stateFilePath,
+		awsRegion:            awsRegion,
+		awsAccessKeyId:       awsAccessKeyId,
+		awsSecretAccessKey:   awsSecretAccessKey,
+		sqsQueueName:         sqsQueueName,
+		sqsQueueUrl:          sqsQueueUrl,
+		environmentName:      environmentName,
+		slackToken:           slackToken,
+		slackChannel:         slackChannel,
+		newThreadMinInterval: newThreadMinInterval,
 	}, nil
+}
+
+func getNewThreadMinInterval() (time.Duration, error) {
+	newThreadMinIntervalStr, ok := os.LookupEnv(NEW_THREAD_MIN_INTERVAL_ENV_VAR)
+	if !ok {
+		newThreadMinIntervalStr = DEFAULT_NEW_THREAD_MIN_INTERVAL
+	}
+
+	newThreadMinInterval, err := time.ParseDuration(newThreadMinIntervalStr)
+	if err != nil {
+		return 0, fmt.Errorf("error occurred while parsing new thread minimum interval value %s: %v", newThreadMinIntervalStr, err)
+	}
+
+	return newThreadMinInterval, nil
 }
 
 // Get state file path
@@ -214,4 +238,8 @@ func (c *Config) GetSlackToken() string {
 
 func (c *Config) GetSlackChanel() string {
 	return c.slackChannel
+}
+
+func (c *Config) GetNewThreadMinInterval() time.Duration {
+	return c.newThreadMinInterval
 }
