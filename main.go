@@ -37,23 +37,9 @@ func main() {
 	sqsClient := sqs.NewFromConfig(awsconfig)
 
 	queueUrl := c.GetSqsQueueUrl()
-	input := sqs.GetQueueAttributesInput{
-		QueueUrl: &queueUrl,
-		AttributeNames: []types.QueueAttributeName{
-			types.QueueAttributeNameApproximateNumberOfMessages,
-		},
-	}
-
-	// get ApproximateNumberOfMessages attribute using get queue attributes for SQS queue
-	output, err := sqsClient.GetQueueAttributes(context.TODO(), &input)
+	approxNumberOfMessages, err := getNumberOfMessagesInSqs(queueUrl, sqsClient)
 	if err != nil {
-		log.Fatalf("error occurred while getting sqs queue attributes: %v", err)
-	}
-
-	approxNumberOfMessagesStr := output.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessages)]
-	approxNumberOfMessages, err := strconv.Atoi(approxNumberOfMessagesStr)
-	if err != nil {
-		log.Fatalf("error occurred while parsing approximate number of messages count (%s) into integer: %v", approxNumberOfMessagesStr, err)
+		log.Fatalf("error occurred while getting number of messages in sqs queue: %v", err)
 	}
 
 	lastThreadTimestamp := oldState.LastThreadTimestamp
@@ -106,4 +92,27 @@ func createNewThread(lastThreadTimestampStr string, now time.Time, newThreadMinI
 	duration := now.Sub(lastThreadTime)
 
 	return duration > newThreadMinInterval
+}
+
+func getNumberOfMessagesInSqs(queueUrl string, sqsClient *sqs.Client) (int, error) {
+	input := sqs.GetQueueAttributesInput{
+		QueueUrl: &queueUrl,
+		AttributeNames: []types.QueueAttributeName{
+			types.QueueAttributeNameApproximateNumberOfMessages,
+		},
+	}
+
+	// get ApproximateNumberOfMessages attribute using get queue attributes for SQS queue
+	output, err := sqsClient.GetQueueAttributes(context.TODO(), &input)
+	if err != nil {
+		return 0, fmt.Errorf("error occurred while getting sqs queue attributes: %v", err)
+	}
+
+	approxNumberOfMessagesStr := output.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessages)]
+	approxNumberOfMessages, err := strconv.Atoi(approxNumberOfMessagesStr)
+	if err != nil {
+		return 0, fmt.Errorf("error occurred while parsing approximate number of messages count (%s) into integer: %v", approxNumberOfMessagesStr, err)
+	}
+
+	return approxNumberOfMessages, nil
 }
