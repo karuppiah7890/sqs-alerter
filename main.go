@@ -18,7 +18,10 @@ import (
 
 // TODO: Write tests for all of this
 
+var version string
+
 func main() {
+	log.Printf("version: %v", version)
 	c, err := config.NewConfigFromEnvVars()
 	if err != nil {
 		log.Fatalf("error occurred while getting configuration from environment variables: %v", err)
