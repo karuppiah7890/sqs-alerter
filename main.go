@@ -37,7 +37,7 @@ func main() {
 	sqsClient := sqs.NewFromConfig(awsconfig)
 
 	queueUrl := c.GetSqsQueueUrl()
-	approxNumberOfMessages, err := getNumberOfMessagesInSqs(queueUrl, sqsClient)
+	numberOfMessages, err := getNumberOfMessagesInSqs(queueUrl, sqsClient)
 	if err != nil {
 		log.Fatalf("error occurred while getting number of messages in sqs queue: %v", err)
 	}
@@ -46,9 +46,9 @@ func main() {
 
 	// check existing state and current state.
 	// if there's a change in state, go ahead and send alert
-	if oldState.SendAlert(approxNumberOfMessages) {
+	if oldState.SendAlert(numberOfMessages) {
 
-		message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", approxNumberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
+		message := fmt.Sprintf("Warning alert :warning:! %d messages are present in %s in %s environment :warning:", numberOfMessages, c.GetSqsQueueName(), c.GetEnvironmentName())
 
 		if createNewThread(lastThreadTimestamp, time.Now(), c.GetNewThreadMinInterval()) {
 			// TODO: Use Mocks to test the integration with ease for different cases with unit tests
@@ -67,7 +67,7 @@ func main() {
 
 	// store current state
 	newState := state.State{
-		QueueMessageCount:   approxNumberOfMessages,
+		QueueMessageCount:   numberOfMessages,
 		LastThreadTimestamp: lastThreadTimestamp,
 	}
 
