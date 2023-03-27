@@ -65,7 +65,7 @@ func main() {
 		}
 
 		if numberOfMessages > 0 {
-			messages, err := getFewMessagesFromQueue(queueUrl, sqsClient)
+			messages, err := getFewMessagesFromQueue(queueUrl, sqsClient, numberOfMessages)
 			if err != nil {
 				log.Fatalf("error occurred while getting few messages from sqs queue: %v", err)
 			}
@@ -133,24 +133,38 @@ func getNumberOfMessagesInSqs(queueUrl string, sqsClient *sqs.Client) (int, erro
 }
 
 // Get the body of a few (max 10) messages from the queue
-func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client) ([]*string, error) {
+func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client, totalNumberOfMessages int) ([]*string, error) {
 	messages := make([]*string, 0)
 
-	input := sqs.ReceiveMessageInput{
-		QueueUrl:            &queueUrl,
-		MaxNumberOfMessages: 10,
-	}
+	messageCount := minOf(10, totalNumberOfMessages)
 
-	output, err := sqsClient.ReceiveMessage(context.TODO(), &input)
-	if err != nil {
-		return nil, fmt.Errorf("error occurred while receiving sqs queue message: %v", err)
-	}
+	for i := 0; messageCount > 0 && i < 10; i++ {
+		input := sqs.ReceiveMessageInput{
+			QueueUrl:            &queueUrl,
+			MaxNumberOfMessages: 10,
+		}
 
-	for _, message := range output.Messages {
-		messages = append(messages, message.Body)
+		output, err := sqsClient.ReceiveMessage(context.TODO(), &input)
+		if err != nil {
+			return nil, fmt.Errorf("error occurred while receiving sqs queue message: %v", err)
+		}
+
+		for _, message := range output.Messages {
+			messages = append(messages, message.Body)
+		}
+
+		messageCount -= len(output.Messages)
 	}
 
 	return messages, nil
+}
+
+func minOf(a int, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
 }
 
 func formSlackMessageForQueueMessages(messages []*string) string {
