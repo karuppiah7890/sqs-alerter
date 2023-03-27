@@ -63,6 +63,21 @@ func main() {
 				log.Fatalf("error occurred while sending slack alert message: %v", err)
 			}
 		}
+
+		if numberOfMessages > 0 {
+			messages, err := getFewMessagesFromQueue(queueUrl, sqsClient)
+			if err != nil {
+				log.Fatalf("error occurred while getting few messages from sqs queue: %v", err)
+			}
+
+			if len(messages) > 0 {
+				slackMessage := formSlackMessageForQueueMessages(messages)
+				_, err = slack.SendMessageToThread(c.GetSlackToken(), c.GetSlackChanel(), slackMessage, lastThreadTimestamp)
+				if err != nil {
+					log.Fatalf("error occurred while sending slack alert message: %v", err)
+				}
+			}
+		}
 	}
 
 	// store current state
@@ -115,4 +130,35 @@ func getNumberOfMessagesInSqs(queueUrl string, sqsClient *sqs.Client) (int, erro
 	}
 
 	return approxNumberOfMessages, nil
+}
+
+// Get the body of a few (max 10) messages from the queue
+func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client) ([]*string, error) {
+	messages := make([]*string, 0)
+
+	input := sqs.ReceiveMessageInput{
+		QueueUrl:            &queueUrl,
+		MaxNumberOfMessages: 10,
+	}
+
+	output, err := sqsClient.ReceiveMessage(context.TODO(), &input)
+	if err != nil {
+		return nil, fmt.Errorf("error occurred while receiving sqs queue message: %v", err)
+	}
+
+	for _, message := range output.Messages {
+		messages = append(messages, message.Body)
+	}
+
+	return messages, nil
+}
+
+func formSlackMessageForQueueMessages(messages []*string) string {
+	slackMessage := "Below are the bodies of a few messages:"
+
+	for _, message := range messages {
+		slackMessage = fmt.Sprintf("%s\n\n```%s```", slackMessage, *message)
+	}
+
+	return slackMessage
 }
