@@ -136,15 +136,16 @@ func getNumberOfMessagesInSqs(queueUrl string, sqsClient *sqs.Client) (int, erro
 }
 
 // Get the body of a few (max 10) messages from the queue
-func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client, totalNumberOfMessages int) ([]*string, error) {
-	messages := make([]*string, 0)
+func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client, totalNumberOfMessages int) ([]*types.Message, error) {
+	messages := make([]*types.Message, 0)
 
 	messageCount := minOf(10, totalNumberOfMessages)
 
 	for i := 0; messageCount > 0 && i < 10; i++ {
 		input := sqs.ReceiveMessageInput{
-			QueueUrl:            &queueUrl,
-			MaxNumberOfMessages: 10,
+			QueueUrl:              &queueUrl,
+			MaxNumberOfMessages:   10,
+			MessageAttributeNames: []string{"All"},
 		}
 
 		output, err := sqsClient.ReceiveMessage(context.TODO(), &input)
@@ -153,7 +154,7 @@ func getFewMessagesFromQueue(queueUrl string, sqsClient *sqs.Client, totalNumber
 		}
 
 		for _, message := range output.Messages {
-			messages = append(messages, message.Body)
+			messages = append(messages, &message)
 		}
 
 		messageCount -= len(output.Messages)
@@ -170,12 +171,22 @@ func minOf(a int, b int) int {
 	return b
 }
 
-func formSlackMessageForQueueMessages(messages []*string) string {
+func formSlackMessageForQueueMessages(messages []*types.Message) string {
 	slackMessage := "Below are the bodies of a few messages:"
 
 	for _, message := range messages {
-		slackMessage = fmt.Sprintf("%s\n\n```%s```", slackMessage, *message)
+		slackMessage = fmt.Sprintf("%s\n\n```%s\n\nReason: %s```", slackMessage, *message.Body, getErrorReason(*message))
 	}
 
 	return slackMessage
+}
+
+func getErrorReason(message types.Message) string {
+	sqsErrorMessage, ok := message.MessageAttributes["SQS-ErrorMessage"]
+
+	if !ok {
+		return ""
+	}
+
+	return *sqsErrorMessage.StringValue
 }
